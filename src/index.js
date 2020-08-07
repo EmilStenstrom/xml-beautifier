@@ -1,6 +1,6 @@
 'use strict';
 
-const repeat = require('repeat-string');
+const repeat = require('./repeat-string.js');
 
 const splitOnTags = str => str.split(/(<\/?[^>]+>)/g).filter(line => line.trim() !== '');
 const isTag = str => /<[^>!]+>/.test(str);
@@ -12,8 +12,23 @@ const isOpeningTag = str => isTag(str) && !isClosingTag(str) && !isSelfClosingTa
 module.exports = (xml, indent) => {
   let depth = 0;
   indent = indent || '    ';
+  let ignoreMode = false;
+  var deferred   = [];
 
   return splitOnTags(xml).map(item => {
+    if (item.trim().startsWith("<![CDATA[")) {
+      ignoreMode = true;
+    }
+    if (item.trim().endsWith("]]>")) {
+      ignoreMode = false;
+      deferred  .push(item);
+      return deferred  .join("");
+    }
+    if (ignoreMode) {
+      deferred  .push(item);
+      return null;
+    }
+
     // removes any pre-existing whitespace chars at the end or beginning of the item
     item = item.replace(/^\s+|\s+$/g, '');
     if (isClosingTag(item)) {
@@ -27,5 +42,5 @@ module.exports = (xml, indent) => {
     }
 
     return line;
-  }).join('\n');
+  }).filter(c => c).join('\n');
 };
